@@ -1,0 +1,59 @@
+// Power BI DAX Measures — E-Commerce Conversion Funnel & RFM Engine
+// Validated: uses DISTINCTCOUNT(session_id) for conversion (not raw event
+// count, which undercounts real conversion), and deduped MAX per session
+// for Lost GMV (not SUMX over every checkout attempt, which multiplies
+// Lost GMV on payment retries). See README "Validation Notes".
+
+Session Conversion Rate % =
+VAR TotalProductSessions =
+    CALCULATE(
+        DISTINCTCOUNT(fact_user_events[session_id]),
+        fact_user_events[event_type] = "Product View"
+    )
+VAR ConvertedSessions =
+    CALCULATE(
+        DISTINCTCOUNT(fact_user_events[session_id]),
+        fact_user_events[event_type] = "Payment Completed"
+    )
+RETURN
+    DIVIDE(ConvertedSessions, TotalProductSessions, 0)
+
+
+Accurate Lost GMV INR =
+VAR AbandonedSessions =
+    FILTER(
+        VALUES(fact_user_events[session_id]),
+        CALCULATE(
+            COUNTROWS(fact_user_events),
+            fact_user_events[event_type] = "Checkout Initiated"
+        ) > 0
+        &&
+        CALCULATE(
+            COUNTROWS(fact_user_events),
+            fact_user_events[event_type] = "Payment Completed"
+        ) = 0
+    )
+RETURN
+    SUMX(AbandonedSessions, CALCULATE(MAX(fact_user_events[cart_value_inr])))
+
+
+Cart Abandonment Rate % =
+VAR CartSessions =
+    CALCULATE(
+        DISTINCTCOUNT(fact_user_events[session_id]),
+        fact_user_events[event_type] = "Add to Cart"
+    )
+VAR PaidSessions =
+    CALCULATE(
+        DISTINCTCOUNT(fact_user_events[session_id]),
+        fact_user_events[event_type] = "Payment Completed"
+    )
+RETURN
+    DIVIDE(CartSessions - PaidSessions, CartSessions, 0)
+
+
+Total Completed GMV INR =
+CALCULATE(
+    SUM(fact_user_events[cart_value_inr]),
+    fact_user_events[event_type] = "Payment Completed"
+)
