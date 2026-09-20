@@ -58,7 +58,7 @@ against ECB/exchangerate-api data), stored as a constant you can update
 before a real run. The original BRL value is preserved alongside the
 converted one so the conversion is auditable, not silent.
 
-### Why Olist, not an Indian dataset — the interview answer
+### Why Olist, not an Indian dataset
 
 No free, public, order-level Indian e-commerce dataset exists — Flipkart,
 Myntra, and Amazon India's transaction data is proprietary. Olist is the
