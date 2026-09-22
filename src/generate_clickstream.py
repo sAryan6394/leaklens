@@ -23,13 +23,11 @@ Output: fact_user_events.csv with columns matching the spec:
 import numpy as np
 import pandas as pd
 
-RNG = np.random.default_rng(7)
-
 EVENT_SEQUENCE = ["Product View", "Add to Cart", "Checkout Initiated", "Payment Completed"]
 
 
 def _make_session_events(session_id, user_id, base_ts, cart_value, reach_stage,
-                          non_linear=False, rng=RNG):
+                          non_linear, rng):
     """reach_stage: index into EVENT_SEQUENCE the session reaches (inclusive)."""
     events = []
     ts = base_ts

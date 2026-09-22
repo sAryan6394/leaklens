@@ -74,10 +74,8 @@ def main():
     print(f"[3/5] Loaded fact_user_events into SQLite warehouse -> {DB_PATH}")
 
     funnel_sql = (ROOT / "sql" / "funnel_query.sql").read_text()
-    # Run only the first SELECT statement (the funnel summary); split on the
-    # blank-line-delimited step markers in the .sql file.
-    first_select = funnel_sql.split("-- Step 3")[0]
-    funnel_result = pd.read_sql_query(first_select, conn)
+    funnel_result = pd.read_sql_query(funnel_sql, conn)
+    
     print("\n[4/5] Funnel summary (validated session-flag CTE query):")
     print(funnel_result.to_string(index=False))
 

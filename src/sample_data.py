@@ -16,8 +16,6 @@ data" until you've re-run the pipeline against the real Olist CSVs.
 import numpy as np
 import pandas as pd
 
-RNG = np.random.default_rng(42)
-
 CITIES = ["Gurgaon", "Noida", "Delhi", "Lucknow", "Kanpur", "Mumbai", "Bangalore", "Pune"]
 CATEGORIES = ["electronics", "fashion", "home_decor", "sports", "books", "beauty", "toys"]
 

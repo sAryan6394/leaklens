@@ -5,8 +5,7 @@
 -- known SQL funnel-analysis failure pattern; MAX(CASE WHEN...) per
 -- session_id is the standard fix (see README "Validation Notes").
 
--- Step 1: build the per-session flag table (also used to populate
--- fact_session_funnel for Power BI).
+-- Step 1: build the per-session flag table.
 WITH SessionStageFlags AS (
     SELECT
         session_id,
