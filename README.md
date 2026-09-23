@@ -28,6 +28,36 @@ pip install -r requirements.txt
 python src/run_pipeline.py
 ```
 
+## Real-data results
+
+Run against the real Olist dataset (99,440 orders, 96,095 unique
+customers), the pipeline produces:
+
+| Metric | Value |
+|---|---|
+| Total sessions | 331,467 |
+| Total events | 854,293 |
+| Session conversion rate | 30% (simulation parameter — see note below) |
+| Lost cart GMV | ₹21.05 crore |
+| Purchasing customers (RFM-scored) | 67,357 |
+| Champions | 5 |
+| Loyal Customers | 86 |
+| At Risk | 17 |
+| Need Attention | 13,964 |
+| New Buyers | 26,387 |
+| Hibernating | 26,898 |
+
+**Which of these numbers are "real" vs simulated, honestly:** the 30%
+conversion rate is not a finding — it's a direct consequence of the
+`abandonment_rate=0.70` parameter set in `generate_clickstream.py` (see
+"Data provenance" below), so it will read as ~30% on any input data by
+construction. What *is* genuinely data-driven: the RFM segment skew
+heavily toward Hibernating/New Buyers rather than Champions/Loyal, which
+reflects a real, well-documented characteristic of the Olist dataset —
+the overwhelming majority of Olist customers make exactly one purchase
+and never return. Lost GMV and session counts scale directly with the
+real order data's actual size and value distribution.
+
 This generates synthetic demo data, builds the clickstream layer, loads a
 local SQLite warehouse at `data/processed/warehouse.db`, runs the validated
 funnel query, and prints RFM segment counts — no external dataset required
