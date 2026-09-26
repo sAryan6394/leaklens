@@ -3,6 +3,16 @@
 // count, which undercounts real conversion), and deduped MAX per session
 // for Lost GMV (not SUMX over every checkout attempt, which multiplies
 // Lost GMV on payment retries). See README "Validation Notes".
+//
+// Accurate Lost GMV INR qualifies on "Add to Cart" (not "Checkout
+// Initiated") — an earlier version used Checkout Initiated, which only
+// counted a narrower subset of abandoners and silently disagreed with
+// sql/funnel_query.sql's lost_cart_gmv_inr (which counts ALL cart
+// abandoners). Caught when the two numbers didn't match on the same
+// dataset — see src/GAP_AUDIT.md / leaklens-bug-log.md entry #11.
+//
+// Lost GMV Display renders Accurate Lost GMV INR in Indian Crore
+// format (Power BI has no native Lakh/Crore display unit).
 
 Session Conversion Rate % =
 VAR TotalProductSessions =
@@ -25,7 +35,7 @@ VAR AbandonedSessions =
         VALUES(fact_user_events[session_id]),
         CALCULATE(
             COUNTROWS(fact_user_events),
-            fact_user_events[event_type] = "Checkout Initiated"
+            fact_user_events[event_type] = "Add to Cart"
         ) > 0
         &&
         CALCULATE(
@@ -35,6 +45,10 @@ VAR AbandonedSessions =
     )
 RETURN
     SUMX(AbandonedSessions, CALCULATE(MAX(fact_user_events[cart_value_inr])))
+
+
+Lost GMV Display =
+"₹" & FORMAT(DIVIDE([Accurate Lost GMV INR], 10000000), "#,##0.00") & " Cr"
 
 
 Cart Abandonment Rate % =
