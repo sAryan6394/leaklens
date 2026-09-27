@@ -45,3 +45,30 @@ Without this fix, the RFM engine either crashes outright on real order
 data, or — if `duplicates='drop'` is used to paper over the crash — silently
 produces a mismatched label array that either errors again or mis-scores
 customers. See `src/rfm_engine.py` for the corrected implementation.
+
+## A second instance of the same bug: Recency and Monetary scoring
+
+The Frequency fix above (explicit `pd.cut()` thresholds) doesn't generalize
+to Recency or Monetary, since neither has natural business-defined
+boundaries the way "number of purchases" does. An early version scored
+them with `pd.qcut(..., duplicates='drop')` — which avoids the crash, but
+reintroduces a related problem: dropping duplicate bin edges shrinks the
+bin count, which silently breaks a fixed `labels=[1,2,3,4,5]` array the
+moment edges collide. On real data this reproduces reliably: a Recency
+column with enough tied values raises
+`ValueError: Bin labels must be one fewer than the number of bin edges`.
+
+### The fix
+
+`safe_quantile_score()` in `rfm_engine.py` ranks values with
+`method="dense"` (so genuinely tied customers stay tied — using
+`method="first"` would reintroduce the original random tie-breaking bug
+from Frequency, just relocated), applies `qcut(..., duplicates="drop")`
+**without** a fixed labels array, then rescales whatever bin count actually
+results back onto a 1-5 scale. In the pathological case where a column has
+zero variance at all (every customer identical), it short-circuits to the
+middle score rather than calling `qcut` at all, since `qcut` returns all-NaN
+on a single-valued input rather than one valid bin.
+
+This makes Recency and Monetary scoring crash-proof under any distribution,
+including cases far more degenerate than the original Frequency bug.

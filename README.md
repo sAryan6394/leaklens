@@ -176,9 +176,12 @@ src/
   rfm_engine.py              RFM scoring and segmentation
   prep_real_data.py          joins real Olist orders, payments, customers
   run_pipeline.py             end-to-end pipeline runner
+  GAP_AUDIT_RFM.md            RFM scoring gap-audit writeup
+  PIPELINE_NOTES.md           pipeline architecture notes
 sql/
   schema.sql                 warehouse schema
   funnel_query.sql            funnel and Lost GMV query
+  GAP_AUDIT.md                funnel-query gap-audit writeup
 dax/
   measures.dax                Power BI measures
   leaklens-theme.json         Power BI custom theme

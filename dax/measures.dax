@@ -9,8 +9,7 @@
 // counted a narrower subset of abandoners and silently disagreed with
 // sql/funnel_query.sql's lost_cart_gmv_inr (which counts ALL cart
 // abandoners). Caught when the two numbers didn't match on the same
-// dataset — see src/GAP_AUDIT.md / leaklens-bug-log.md entry #11.
-//
+// dataset while building the Power BI dashboard.
 // Lost GMV Display renders Accurate Lost GMV INR in Indian Crore
 // format (Power BI has no native Lakh/Crore display unit).
 

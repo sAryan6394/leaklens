@@ -35,10 +35,3 @@ SELECT
     SUM(CASE WHEN added_to_cart = 1 AND completed_payment = 0
              THEN final_cart_value ELSE 0 END)                              AS lost_cart_gmv_inr
 FROM SessionStageFlags;
-
--- Step 3 (separate statement): materialize per-session flags into
--- fact_session_funnel for Power BI to connect to directly.
--- INSERT INTO fact_session_funnel
--- SELECT session_id, user_id, session_start, visited_product, added_to_cart,
---        initiated_checkout, completed_payment, final_cart_value
--- FROM SessionStageFlags;
