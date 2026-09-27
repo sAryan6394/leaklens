@@ -1,0 +1,62 @@
+{
+  "name": "LeakLens Executive Dark",
+  "dataColors": [
+    "#56CCF2",
+    "#F2994A",
+    "#8B98A5",
+    "#2DD4BF",
+    "#F5A623",
+    "#6B7A8F",
+    "#3FA9DC",
+    "#E27D3C"
+  ],
+  "background": "#0F1720",
+  "backgroundLight": "#1B2733",
+  "backgroundNeutral": "#243040",
+  "foreground": "#E6EDF3",
+  "tableAccent": "#56CCF2",
+  "good": "#56CCF2",
+  "neutral": "#8B98A5",
+  "bad": "#F2994A",
+  "maximum": "#56CCF2",
+  "center": "#8B98A5",
+  "minimum": "#F2994A",
+  "null": "#3A4552",
+  "textClasses": {
+    "callout": { "fontFace": "Segoe UI", "fontSize": 32, "color": "#E6EDF3" },
+    "title": { "fontFace": "Segoe UI Semibold", "fontSize": 14, "color": "#E6EDF3" },
+    "header": { "fontFace": "Segoe UI", "fontSize": 12, "color": "#8B98A5" },
+    "label": { "fontFace": "Segoe UI", "fontSize": 10, "color": "#8B98A5" }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#16212E" } }, "transparency": 0 }],
+        "border": [{ "show": true, "color": { "solid": { "color": "#243040" } }, "radius": 6 }],
+        "title": [{
+          "fontColor": { "solid": { "color": "#E6EDF3" } },
+          "fontSize": 14,
+          "background": { "solid": { "color": "#16212E" } }
+        }]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#0F1720" } }, "transparency": 0 }]
+      }
+    },
+    "card": {
+      "*": {
+        "labels": [{
+          "color": { "solid": { "color": "#E6EDF3" } },
+          "fontSize": 28,
+          "fontFamily": "Segoe UI Semibold"
+        }],
+        "categoryLabels": [{
+          "color": { "solid": { "color": "#8B98A5" } },
+          "fontSize": 11
+        }]
+      }
+    }
+  }
+}
