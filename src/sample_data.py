@@ -1,16 +1,13 @@
 """
 sample_data.py
 
-Generates a small, CLEARLY-SYNTHETIC orders dataset shaped like the real
-Olist Brazilian E-Commerce dataset (https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
+Generates a small synthetic orders dataset shaped like the Olist Brazilian
+E-Commerce dataset (https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
 
-Purpose: let the pipeline run end-to-end on day 1, before you've downloaded
-the real Olist CSVs from Kaggle. Swap this out the moment you have the real
-data (see README "Using the real Olist dataset").
-
-DO NOT present numbers generated from this fixture as real business metrics
-in your resume, README, or interviews. Label them "demo run on synthetic
-data" until you've re-run the pipeline against the real Olist CSVs.
+It exists so the pipeline can run end to end before the real Olist CSVs are
+downloaded. Numbers produced from this data are demo output only. Once the
+real files are in place (see the README, "Using the real Olist dataset"),
+run_pipeline.py uses them instead.
 """
 
 import numpy as np
@@ -30,10 +27,9 @@ def generate_orders(n_customers: int = 2000, n_orders: int = 3200, seed: int = 4
     end_date = pd.Timestamp("2026-09-01")
     date_range_days = (end_date - start_date).days
 
-    # Draw all n_orders random values in one vectorized call each, instead of
-    # calling rng.choice()/rng.integers() once per row in a loop — calling
-    # rng.choice() on a Python list per-row rescans/converts the whole list
-    # every time, which is O(n_orders * n_customers), not O(n_orders).
+    # All random values are drawn in one vectorized call each. Calling
+    # rng.choice() once per row on a Python list would convert the whole list
+    # on every call, which costs O(n_orders * n_customers) instead of O(n_orders).
     chosen_customers = rng.choice(customer_ids, size=n_orders)
     offsets_days = rng.integers(0, date_range_days, size=n_orders)
     offsets_minutes = rng.integers(0, 24 * 60, size=n_orders)  # combined hours+minutes as one offset

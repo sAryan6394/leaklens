@@ -1,21 +1,21 @@
 """
 prep_real_data.py
 
-One-time script: joins the real Olist orders + payments + customers CSVs
-into the single file run_pipeline.py expects at
-data/raw/olist_orders_dataset.csv, with columns:
+Joins the real Olist orders, payments, and customers CSVs into the file
+run_pipeline.py expects at data/raw/olist_orders_dataset.csv, with columns:
     order_id, user_id, order_timestamp, transaction_amount_inr
 
-Two things this deliberately gets right that a naive join would miss:
-  1. user_id comes from customer_unique_id, NOT customer_id. Olist's
-     customer_id is unique PER ORDER, not per person — using it directly
-     would make every order look like a different customer and Frequency
-     would always read as 1, silently breaking the RFM engine.
-  2. transaction_amount_inr is left as raw BRL here — the actual BRL->INR
-     conversion happens in run_pipeline.py (documented, dated rate), not
-     here, so there's only one place that conversion logic lives.
+Two details in the join:
+  1. user_id comes from customer_unique_id, not customer_id. Olist assigns a
+     new customer_id to every order, so using it would make each order look
+     like a different customer and Frequency would always be 1.
+  2. transaction_amount_inr holds the raw BRL payment value. The BRL to INR
+     conversion happens in run_pipeline.py, so the rate lives in one place.
 
-Run once: python src/prep_real_data.py
+The output is written as olist_orders_dataset.prepped.csv. Rename it to
+olist_orders_dataset.csv to use it.
+
+Usage: python src/prep_real_data.py
 """
 
 from pathlib import Path
@@ -33,8 +33,8 @@ def main():
     customers = pd.read_csv(RAW_DIR / "olist_customers_dataset.csv",
                             usecols=["customer_id", "customer_unique_id"])
 
-    # An order can have multiple payment rows (installments / split payment
-    # methods) — sum to get one total per order.
+    # An order can have several payment rows (installments or split payment
+    # methods), so sum them to get one total per order.
     order_totals = payments.groupby("order_id", as_index=False)["payment_value"].sum()
 
     df = (orders
@@ -49,8 +49,8 @@ def main():
     })
 
     out_path = RAW_DIR / "olist_orders_dataset.csv"
-    # Overwriting the raw orders file with the joined/renamed version is
-    # intentional here — run_pipeline.py looks for exactly this filename.
+    # Saved with a .prepped.csv suffix so the raw file isn't overwritten.
+    # Rename it to olist_orders_dataset.csv, the name run_pipeline.py looks for.
     result.to_csv(out_path.with_suffix(".prepped.csv"), index=False)
     print(f"Wrote {len(result)} orders for {result['user_id'].nunique()} unique customers")
     print(f"-> {out_path.with_suffix('.prepped.csv')}")

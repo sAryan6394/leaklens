@@ -1,22 +1,21 @@
 """
 generate_clickstream.py
 
-Olist (and most public e-commerce datasets) only has order-level data —
-there is no raw pre-purchase clickstream (Product View / Add to Cart /
-Checkout Initiated events). This script builds that missing layer on top
-of real (or sample) order data, clearly labeled as simulated.
+Olist, like most public e-commerce datasets, only has order-level data. It
+has no pre-purchase clickstream (Product View, Add to Cart, and Checkout
+Initiated events). This script builds that layer on top of the order data,
+and the events it produces are simulated.
 
-Design choices that matter for the interview story:
-  - Every COMPLETED order becomes a session that reaches Payment Completed.
-  - A configurable fraction of those completed sessions include a
-    non-linear browsing loop (View -> Cart -> View -> Checkout) — this is
-    what makes the LEAD()-based funnel query undercount conversion, and
-    is exactly the bug documented in the project's gap audit.
-  - Additional ABANDONED sessions are generated at each funnel stage so the
-    overall cart-abandonment rate lands near real-world e-commerce
-    benchmarks (65-75%), per the project's target benchmarks.
+How the simulation works:
+  - Every completed order becomes a session that reaches Payment Completed.
+  - A configurable fraction of those sessions include a non-linear browsing
+    loop (View -> Cart -> View -> Checkout). This is the pattern that makes
+    a LEAD()-based funnel query undercount conversion (see sql/GAP_AUDIT.md).
+  - Extra abandoned sessions are generated at each funnel stage so the
+    overall abandonment rate lands around 70%, within published cart
+    abandonment benchmarks.
 
-Output: fact_user_events.csv with columns matching the spec:
+Output: fact_user_events.csv with columns
   event_id, user_id, session_id, event_timestamp, event_type, cart_value_inr
 """
 
@@ -38,9 +37,9 @@ def _make_session_events(session_id, user_id, base_ts, cart_value, reach_stage,
         })
         ts = ts + pd.Timedelta(minutes=int(rng.integers(1, 6)))
 
-        # Deliberately inject a non-linear loop right after "Add to Cart":
-        # user goes back to browsing before continuing to checkout.
-        # This is what breaks a naive LEAD()-based funnel query.
+        # Inject a non-linear loop right after "Add to Cart": the user goes
+        # back to browsing before continuing to checkout. This is the pattern
+        # that breaks a LEAD()-based funnel query.
         if non_linear and EVENT_SEQUENCE[i] == "Add to Cart" and reach_stage >= 2:
             events.append({
                 "session_id": session_id, "user_id": user_id, "event_timestamp": ts,
@@ -54,15 +53,14 @@ def generate_clickstream(orders: pd.DataFrame, abandonment_rate: float = 0.70,
                         non_linear_fraction: float = 0.35, seed: int = 7) -> pd.DataFrame:
     """
     orders: DataFrame with columns [order_id, user_id, order_timestamp, transaction_amount_inr]
-    abandonment_rate: overall share of ALL sessions (completed + abandoned) that never pay.
+    abandonment_rate: overall share of all sessions (completed and abandoned) that never pay.
     """
     rng = np.random.default_rng(seed)
     all_events = []
     sid_counter = 0
 
-    # 1. Completed sessions — one per real order. itertuples() instead of
-    # iterrows() — noticeably faster at real-dataset scale (no per-row
-    # Series object construction).
+    # 1. Completed sessions, one per real order. itertuples() avoids building
+    # a Series for every row, which is noticeably faster at this size.
     non_linear_flags = rng.random(size=len(orders)) < non_linear_fraction
     for idx, row in enumerate(orders.itertuples(index=False)):
         sid_counter += 1
@@ -86,13 +84,11 @@ def generate_clickstream(orders: pd.DataFrame, abandonment_rate: float = 0.70,
     end_ts = orders["order_timestamp"].max()
     span_days = max((end_ts - start_ts).days, 1)
 
-    # Draw ALL random values for the n_abandoned sessions in one vectorized
-    # call each, instead of once per session in the loop. Calling
-    # rng.choice() on a large array/list once PER ROW rescans/converts it
-    # every time — O(n_abandoned * len(user_pool)) instead of O(n_abandoned).
-    # This was the actual bottleneck: with ~96K unique users and ~230K
-    # abandoned sessions on the real dataset, the per-row version was doing
-    # on the order of tens of billions of element-scans.
+    # All random values for the abandoned sessions are drawn in one vectorized
+    # call each. Calling rng.choice() once per session on a large array would
+    # convert it on every call, so cost would grow as O(n_abandoned *
+    # len(user_pool)). On the real dataset (about 96K users and 230K abandoned
+    # sessions) that comes to tens of billions of element operations.
     chosen_users = rng.choice(user_pool, size=n_abandoned)
     reach_stages = rng.choice(list(stage_weights.keys()), size=n_abandoned,
                             p=list(stage_weights.values()))

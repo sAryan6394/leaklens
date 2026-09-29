@@ -1,9 +1,8 @@
--- Validated funnel query — session-flag conditional aggregation.
--- Replaces a naive LEAD()-based approach, which only inspects the
--- immediate next row and falsely flags abandonment on non-linear
--- browsing loops (View -> Cart -> View -> Checkout). Confirmed as a
--- known SQL funnel-analysis failure pattern; MAX(CASE WHEN...) per
--- session_id is the standard fix (see README "Validation Notes").
+-- Funnel query using session-level conditional aggregation.
+-- A LEAD()-based version only looks at the next row, so it flags an
+-- abandonment whenever a session loops back to browsing (View -> Cart ->
+-- View -> Checkout). MAX(CASE WHEN ...) per session_id avoids that.
+-- Details are in sql/GAP_AUDIT.md.
 
 -- Step 1: build the per-session flag table.
 WITH SessionStageFlags AS (
@@ -20,7 +19,7 @@ WITH SessionStageFlags AS (
     GROUP BY session_id, user_id
 )
 
--- Step 2: funnel summary — run this for the headline dashboard numbers.
+-- Step 2: funnel summary with the headline dashboard numbers.
 SELECT
     COUNT(DISTINCT session_id)                                              AS total_sessions,
     SUM(visited_product)                                                    AS product_view_sessions,

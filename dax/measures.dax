@@ -1,17 +1,17 @@
-// Power BI DAX Measures — E-Commerce Conversion Funnel & RFM Engine
-// Validated: uses DISTINCTCOUNT(session_id) for conversion (not raw event
-// count, which undercounts real conversion), and deduped MAX per session
-// for Lost GMV (not SUMX over every checkout attempt, which multiplies
-// Lost GMV on payment retries). See README "Validation Notes".
+// DAX measures for the LeakLens dashboard.
 //
-// Accurate Lost GMV INR qualifies on "Add to Cart" (not "Checkout
-// Initiated") — an earlier version used Checkout Initiated, which only
-// counted a narrower subset of abandoners and silently disagreed with
-// sql/funnel_query.sql's lost_cart_gmv_inr (which counts ALL cart
-// abandoners). Caught when the two numbers didn't match on the same
-// dataset while building the Power BI dashboard.
-// Lost GMV Display renders Accurate Lost GMV INR in Indian Crore
-// format (Power BI has no native Lakh/Crore display unit).
+// Session Conversion Rate % divides distinct converted sessions by distinct
+// product-view sessions. Counting raw events would understate conversion,
+// since one session can contain many product views.
+//
+// Accurate Lost GMV INR takes the maximum cart value per session, so a
+// session with several checkout attempts counts once. It qualifies on
+// "Add to Cart", matching lost_cart_gmv_inr in sql/funnel_query.sql. An
+// earlier version qualified on "Checkout Initiated", which counted a
+// narrower group and disagreed with the SQL result on the same data.
+//
+// Lost GMV Display formats Accurate Lost GMV INR in Indian crore, because
+// Power BI has no built-in lakh/crore display unit.
 
 Session Conversion Rate % =
 VAR TotalProductSessions =

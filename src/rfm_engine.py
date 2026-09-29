@@ -1,28 +1,24 @@
 """
 rfm_engine.py
 
-Validated RFM segmentation engine (see project README "Validation Notes"
-and sql/GAP_AUDIT.md, src/GAP_AUDIT_RFM.md).
+RFM segmentation engine. The reasoning behind the scoring choices is in
+src/GAP_AUDIT_RFM.md.
 
-Frequency uses explicit business-defined pd.cut() thresholds instead of
-pd.qcut() — pd.qcut() throws ValueError: Bin edges must be unique when 80%+
-of buyers are single-purchase (confirmed: pandas-dev/pandas issue #7751).
-duplicates='drop' is not used as the fix because it silently changes the
-bin count, which breaks a fixed labels=[1,2,3,4,5] array the moment edges
-collide (pandas issue #22669).
+Frequency uses fixed pd.cut() thresholds instead of pd.qcut(). qcut raises
+"ValueError: Bin edges must be unique" when most buyers have a single
+purchase (pandas issue #7751). duplicates='drop' doesn't fix it, because it
+shrinks the bin count and breaks a fixed labels=[1,2,3,4,5] array as soon as
+edges collide (pandas issue #22669).
 
-Recency and Monetary use safe_quantile_score() below instead of a plain
-qcut(..., duplicates='drop'): dropping duplicate edges against a FIXED
-labels array is exactly the anti-pattern that crashes Frequency (see
-above) — it just crashes less often, on skewed-but-not-degenerate data
-(e.g. many customers sharing the same Recency value). safe_quantile_score
-rescales whatever bin count actually results onto a 1..q scale instead,
-so it can never crash, including the zero-variance edge case where every
-customer has an identical value. Recency is computed from each customer's
-last 'Payment Completed' event only (standard RFM definition — days since
-last purchase), not their last event of any kind, since a customer who
-only browsed recently isn't meaningfully "recently active" for RFM
-purposes.
+Recency and Monetary use safe_quantile_score() below. A plain
+qcut(..., duplicates='drop') has the same label mismatch, it just shows up
+less often, on skewed data such as many customers sharing one Recency value.
+safe_quantile_score rescales whatever bin count results onto a 1..q scale, so
+it can't crash, even when every customer has the same value.
+
+Recency is measured from each customer's last 'Payment Completed' event,
+which is the standard RFM definition (days since last purchase). A customer
+who only browsed recently isn't recently active for RFM purposes.
 """
 
 import numpy as np
@@ -31,24 +27,22 @@ import pandas as pd
 
 def safe_quantile_score(series: pd.Series, q: int = 5, ascending: bool = True) -> pd.Series:
     """
-    Quantile-scores `series` into 1..q, and CANNOT crash regardless of how
-    skewed or tied the data is — including the pathological case where
-    every value is identical (no variance to bin at all).
+    Scores `series` from 1 to q by quantile. It doesn't crash on skewed or
+    tied data, including the case where every value is identical.
 
-    Uses duplicates='drop' WITHOUT a fixed labels array (the mistake
-    documented in src/GAP_AUDIT_RFM.md), then rescales whatever bin count
-    actually results back onto a 1..q integer scale. If there's truly no
-    variance, every row gets the middle score rather than raising.
+    qcut runs with duplicates='drop' and no fixed labels array (the fixed
+    array is what breaks, see src/GAP_AUDIT_RFM.md). Whatever number of bins
+    comes out is then rescaled onto a 1..q scale. With no variance at all,
+    every row gets the middle score.
     """
-    # Zero variance at all (every customer identical on this metric) —
-    # qcut can't form even one bin here (returns all-NaN, not one bin),
-    # so short-circuit before calling it.
+    # If every customer has the same value, qcut can't form even one bin (it
+    # returns all NaN), so return the middle score without calling it.
     if series.nunique(dropna=True) <= 1:
         return pd.Series(int(np.ceil(q / 2)), index=series.index)
 
-    # method='dense' (not 'first') — genuinely-tied customers must stay tied.
-    # Using 'first' would silently reintroduce the exact random tie-breaking
-    # anti-pattern documented as the ORIGINAL bug in src/GAP_AUDIT_RFM.md.
+    # method='dense', not 'first': customers with identical values must stay
+    # tied. 'first' would break ties by row order, the same problem described
+    # in src/GAP_AUDIT_RFM.md.
     codes = pd.qcut(series.rank(method="dense"), q, labels=False, duplicates="drop")
     n_bins = int(codes.max()) + 1
     if n_bins <= 1:
@@ -64,7 +58,7 @@ def compute_rfm_segments_robust(events: pd.DataFrame, lookback_days: int = 365) 
     """
     events: fact_user_events-shaped DataFrame with columns
         [user_id, session_id, event_timestamp, event_type, cart_value_inr]
-    Only 'Payment Completed' events count toward Frequency/Monetary.
+    Only 'Payment Completed' events count toward Recency, Frequency, and Monetary.
     """
     df = events.copy()
     df["event_timestamp"] = pd.to_datetime(df["event_timestamp"])
@@ -75,8 +69,8 @@ def compute_rfm_segments_robust(events: pd.DataFrame, lookback_days: int = 365) 
 
     completed = df_filtered[df_filtered["event_type"] == "Payment Completed"]
 
-    # Recency = days since last PURCHASE (standard RFM definition), not
-    # days since last activity of any kind.
+    # Recency is days since the last purchase (standard RFM), not since the
+    # last activity of any kind.
     recency_src = completed.groupby("user_id")["event_timestamp"].max()
     freq_monetary = completed.groupby("user_id").agg(
         Frequency=("session_id", "nunique"),
@@ -87,10 +81,10 @@ def compute_rfm_segments_robust(events: pd.DataFrame, lookback_days: int = 365) 
     rfm["Recency"] = (snapshot_date - rfm["last_seen"]).dt.days
     rfm = rfm.drop(columns=["last_seen"])
 
-    # Recency: lower days-since-purchase = better, so ascending=False
-    # (low raw value -> high score). Cannot crash, even with zero variance.
+    # Fewer days since purchase is better, so ascending=False (a low raw
+    # value gets a high score).
     rfm["R_Score"] = safe_quantile_score(rfm["Recency"], q=5, ascending=False)
-    # Frequency: explicit business thresholds, not qcut — see module docstring.
+    # Frequency uses fixed thresholds instead of qcut (see the module docstring).
     rfm["F_Score"] = pd.cut(rfm["Frequency"], bins=[0, 1, 2, 4, 7, np.inf],
                             labels=[1, 2, 3, 4, 5], right=True)
     # Monetary: higher spend = better, so ascending=True.
